@@ -85,7 +85,7 @@ dependency-docs-collector --log-level DEBUG
 
 Инструмент создает следующую структуру каталогов:
 
-```
+```bash
 output_dir/
 ├── package1/
 │   ├── docs/
