@@ -1,0 +1,78 @@
+site_name: Dependency Docs Collector
+site_description: Инструмент для анализа зависимостей Python-проектов и сбора документации
+site_url: https://github.com/eagurin/dependency-docs-collector
+repo_url: https://github.com/eagurin/dependency-docs-collector
+repo_name: eagurin/dependency-docs-collector
+
+theme:
+  name: material
+  palette:
+    primary: indigo
+    accent: indigo
+  icon:
+    repo: fontawesome/brands/github
+    logo: material/book-open-page-variant
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.top
+    - navigation.indexes
+    - content.code.copy
+    - content.code.annotate
+    - search.highlight
+    - search.share
+
+markdown_extensions:
+  - admonition
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: pymdownx.emoji.twemoji
+      emoji_generator: pymdownx.emoji.to_svg
+  - tables
+  - attr_list
+  - md_in_html
+  - def_list
+  - footnotes
+
+plugins:
+  - search
+  - autorefs
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          options:
+            show_source: true
+            show_root_heading: true
+            heading_level: 3
+
+nav:
+  - Главная: index.md
+  - Руководство:
+    - Установка: guide/installation.md
+    - Быстрый старт: guide/quickstart.md
+    - Использование: guide/usage.md
+    - Поддерживаемые форматы: guide/supported-formats.md
+  - Справочник API: api/
+  - Разработка:
+    - Вклад в проект: development/contributing.md
+    - Руководство разработчика: development/developer-guide.md
+    - Стиль кода: development/code-style.md
+  - О проекте:
+    - Авторы: about/authors.md
+    - Лицензия: about/license.md
+    - История изменений: about/changelog.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/eagurin
+      name: eagurin на GitHub 

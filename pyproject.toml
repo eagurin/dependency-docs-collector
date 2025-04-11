@@ -1,0 +1,108 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "dependency-docs-collector"
+version = "0.1.0"
+description = "Tool for analyzing Python project dependencies and collecting documentation"
+readme = "README.md"
+requires-python = ">=3.8,<3.13"
+license = {text = "MIT"}
+authors = [
+    {name = "Author"}
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Documentation",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "aiohttp>=3.8.0",
+    "aiofiles>=0.8.0",
+    "tomli>=2.0.0; python_version < '3.11'",
+    "click>=8.0.0",
+    "rich>=10.0.0",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+    "pre-commit>=3.0.0",
+]
+test = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "pytest-asyncio>=0.20.0",
+]
+docs = [
+    "mkdocs>=1.4.0",
+    "mkdocs-material>=9.0.0",
+    "mkdocstrings[python]>=0.20.0",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/eagurin/dependency-docs-collector"
+"Bug Tracker" = "https://github.com/eagurin/dependency-docs-collector/issues"
+"Documentation" = "https://eagurin.github.io/dependency-docs-collector/"
+
+[project.scripts]
+dependency-docs-collector = "main:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+select = ["E", "F", "B", "I", "N", "UP", "ANN", "FBT", "A", "C4", "SIM", "ERA"]
+ignore = ["ANN101", "ANN102", "ANN401"]
+unfixable = ["F401", "F841"]
+
+[tool.ruff.isort]
+known-first-party = ["main"]
+
+[tool.ruff.flake8-annotations]
+allow-star-arg-any = true
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = false
+no_implicit_optional = true
+strict_optional = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_functions = "test_*"
+python_classes = "Test*"
+asyncio_mode = "auto"
+
+[tool.coverage.run]
+source = ["dependency_docs_collector"]
+omit = ["tests/*", "**/__init__.py", "**/__main__.py"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "pass",
+    "raise ImportError",
+] 
