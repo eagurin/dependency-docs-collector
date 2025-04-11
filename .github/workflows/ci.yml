@@ -33,7 +33,7 @@ jobs:
         run: ruff check .
 
       - name: Type check with mypy
-        run: mypy dependency_docs_collector tests
+        run: mypy main.py tests
 
   test:
     name: Test Python ${{ matrix.python-version }} on ${{ matrix.os }}
@@ -70,7 +70,7 @@ jobs:
         run: uv pip install -e ".[test]"
 
       - name: Run tests
-        run: pytest tests -v --cov=dependency_docs_collector
+        run: pytest tests -v --cov=main
 
   build:
     name: Build and Upload Artifacts

@@ -65,7 +65,8 @@ dependency-docs-collector --library-list "requests,flask,pandas" --create-lectur
 ### Анализ зависимостей проекта
 
 ```python
-from dependency_docs_collector.analyzer import DependencyAnalyzer
+# Импорт напрямую из main.py
+from main import DependencyAnalyzer
 
 # Создание анализатора
 analyzer = DependencyAnalyzer("/path/to/project")
@@ -84,7 +85,8 @@ if scan_imports:
 ### Сбор документации
 
 ```python
-from dependency_docs_collector.collector import DocumentationCollector
+# Импорт напрямую из main.py
+from main import DocumentationCollector
 
 # Создание коллектора
 collector = DocumentationCollector("./output")

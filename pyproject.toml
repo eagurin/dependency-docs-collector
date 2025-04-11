@@ -94,8 +94,8 @@ python_classes = "Test*"
 asyncio_mode = "auto"
 
 [tool.coverage.run]
-source = ["dependency_docs_collector"]
-omit = ["tests/*", "**/__init__.py", "**/__main__.py"]
+source = ["main"]
+omit = ["tests/*"]
 
 [tool.coverage.report]
 exclude_lines = [
