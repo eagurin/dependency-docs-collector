@@ -4,8 +4,9 @@
 
 import os
 import sys
-import pytest
 from pathlib import Path
+
+import pytest
 
 # Добавляем корневую директорию в sys.path для доступа к main.py
 sys.path.insert(0, str(Path(__file__).parent.parent))

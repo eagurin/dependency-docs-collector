@@ -15,24 +15,25 @@
     python main.py --project-path /path/to/project --scan-imports --analyze-only
 """
 
-import os
-import sys
-import json
-import logging
 import argparse
 import asyncio
-import re
-import aiohttp
-import aiofiles
-import shutil
-import random
-import time
 import importlib
-import subprocess
+import json
+import logging
+import os
 import pkgutil
-from pathlib import Path
-from typing import Dict, List, Set, Optional, Tuple, Any
+import random
+import re
+import shutil
+import subprocess
+import sys
+import time
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+from typing import Any
+
+import aiofiles
+import aiohttp
 
 # Настройка логирования
 logging.basicConfig(
@@ -281,13 +282,11 @@ KNOWN_STDLIB_MODULES = {
     "zlib",
     # Тестирование
     "pytest",
-    "unittest",
     "nose",
     "mock",
     "hypothesis",
     "tox",
     "coverage",
-    "doctest",
 }
 
 # Базовый словарь известных соответствий между импортами и пакетами
@@ -341,7 +340,7 @@ REGEX_PATTERNS = {
 }
 
 
-def get_stdlib_modules() -> Set[str]:
+def get_stdlib_modules() -> set[str]:
     """
     Получает список стандартных библиотек Python, используя различные методы
     в зависимости от версии Python.
@@ -412,7 +411,7 @@ def is_stdlib_module(module_name: str) -> bool:
         return False
 
 
-def get_package_metadata(package_name: str) -> Optional[Dict]:
+def get_package_metadata(package_name: str) -> dict | None:
     """
     Получает метаданные пакета из PyPI.
 
@@ -424,8 +423,8 @@ def get_package_metadata(package_name: str) -> Optional[Dict]:
     """
     url = f"https://pypi.org/pypi/{package_name}/json"
     try:
-        import urllib.request
         import urllib.error
+        import urllib.request
 
         with urllib.request.urlopen(url) as response:
             return json.loads(response.read().decode("utf-8"))
@@ -434,7 +433,7 @@ def get_package_metadata(package_name: str) -> Optional[Dict]:
         return None
 
 
-def build_package_aliases_dict(package_names: List[str]) -> Dict[str, str]:
+def build_package_aliases_dict(package_names: list[str]) -> dict[str, str]:
     """
     Создает словарь соответствия между именами импортов и пакетами.
 
@@ -485,7 +484,7 @@ def build_package_aliases_dict(package_names: List[str]) -> Dict[str, str]:
     return aliases
 
 
-def get_installed_packages() -> List[str]:
+def get_installed_packages() -> list[str]:
     """
     Получает список установленных пакетов Python.
 
@@ -501,7 +500,7 @@ def get_installed_packages() -> List[str]:
         return []
 
 
-def get_cached_or_build_stdlib_modules() -> Set[str]:
+def get_cached_or_build_stdlib_modules() -> set[str]:
     """
     Возвращает список стандартных библиотек, используя кэширование
     для повышения производительности.
@@ -516,7 +515,7 @@ def get_cached_or_build_stdlib_modules() -> Set[str]:
         try:
             mtime = os.path.getmtime(cache_file)
             if (time.time() - mtime) < 30 * 24 * 60 * 60:  # 30 дней
-                with open(cache_file, "r") as f:
+                with open(cache_file) as f:
                     return set(json.load(f))
         except Exception as e:
             logger.debug(f"Ошибка при чтении кэша стандартных библиотек: {e}")
@@ -545,7 +544,7 @@ class DependencyAnalyzer:
             project_path: Путь к проекту для анализа
         """
         self.project_path = Path(project_path)
-        self.dependencies: Set[str] = set()
+        self.dependencies: set[str] = set()
         self.ignored_packages = {
             "pip",
             "setuptools",
@@ -575,10 +574,13 @@ class DependencyAnalyzer:
         package = package.split(";")[0]
         # Удаляем все после # (например, #egg=sphinx-paramlinks)
         package = package.split("#")[0]
-        # Удаляем URL-схемы (например, git+https://)
-        package = re.sub(r"^[a-z]+\+https?://.+?/", "", package)
-        # Удаляем github.com/user/ из URL
-        package = re.sub(r"github\.com/[^/]+/", "", package)
+        # Для Git URL берем только имя репозитория
+        if package.startswith(("git+", "http://", "https://")):
+            # Удаляем схему и протокол
+            package = re.sub(r"^(?:git\+)?https?://", "", package)
+            # Если это GitHub URL, берем только имя репозитория
+            if "github.com/" in package:
+                package = package.split("github.com/")[-1].split("/")[-1]
         # Удаляем .git в конце
         package = package.replace(".git", "")
         # Удаляем лишние пробелы
@@ -587,7 +589,7 @@ class DependencyAnalyzer:
         package = package.lower()
         return package
 
-    async def analyze_requirements_txt(self, file_path: Path) -> Set[str]:
+    async def analyze_requirements_txt(self, file_path: Path) -> set[str]:
         """
         Анализ requirements.txt.
 
@@ -599,9 +601,7 @@ class DependencyAnalyzer:
         """
         deps = set()
         try:
-            async with aiofiles.open(
-                file_path, "r", encoding="utf-8", errors="ignore"
-            ) as f:
+            async with aiofiles.open(file_path, encoding="utf-8", errors="ignore") as f:
                 content = await f.read()
                 for line in content.splitlines():
                     line = line.strip()
@@ -627,7 +627,7 @@ class DependencyAnalyzer:
             logger.error(f"Ошибка при чтении {file_path}: {e}")
         return deps
 
-    async def analyze_setup_py(self, file_path: Path) -> Set[str]:
+    async def analyze_setup_py(self, file_path: Path) -> set[str]:
         """
         Анализ setup.py.
 
@@ -639,9 +639,7 @@ class DependencyAnalyzer:
         """
         deps = set()
         try:
-            async with aiofiles.open(
-                file_path, "r", encoding="utf-8", errors="ignore"
-            ) as f:
+            async with aiofiles.open(file_path, encoding="utf-8", errors="ignore") as f:
                 content = await f.read()
 
                 # Ищем install_requires
@@ -675,7 +673,7 @@ class DependencyAnalyzer:
             logger.error(f"Ошибка при чтении {file_path}: {e}")
         return deps
 
-    async def analyze_pyproject_toml(self, file_path: Path) -> Set[str]:
+    async def analyze_pyproject_toml(self, file_path: Path) -> set[str]:
         """
         Анализ pyproject.toml.
 
@@ -836,7 +834,7 @@ class DependencyAnalyzer:
             logger.error(f"Ошибка при чтении {file_path}: {e}")
         return deps
 
-    async def analyze_pipfile(self, file_path: Path) -> Set[str]:
+    async def analyze_pipfile(self, file_path: Path) -> set[str]:
         """
         Анализ Pipfile.
 
@@ -848,9 +846,7 @@ class DependencyAnalyzer:
         """
         deps = set()
         try:
-            async with aiofiles.open(
-                file_path, "r", encoding="utf-8", errors="ignore"
-            ) as f:
+            async with aiofiles.open(file_path, encoding="utf-8", errors="ignore") as f:
                 content = await f.read()
 
                 # Ищем секцию [packages]
@@ -878,7 +874,7 @@ class DependencyAnalyzer:
             logger.error(f"Ошибка при чтении {file_path}: {e}")
         return deps
 
-    async def analyze_pipfile_lock(self, file_path: Path) -> Set[str]:
+    async def analyze_pipfile_lock(self, file_path: Path) -> set[str]:
         """
         Анализ Pipfile.lock.
 
@@ -890,9 +886,7 @@ class DependencyAnalyzer:
         """
         deps = set()
         try:
-            async with aiofiles.open(
-                file_path, "r", encoding="utf-8", errors="ignore"
-            ) as f:
+            async with aiofiles.open(file_path, encoding="utf-8", errors="ignore") as f:
                 content = await f.read()
                 data = json.loads(content)
 
@@ -915,7 +909,7 @@ class DependencyAnalyzer:
             logger.error(f"Ошибка при чтении {file_path}: {e}")
         return deps
 
-    async def analyze_poetry_lock(self, file_path: Path) -> Set[str]:
+    async def analyze_poetry_lock(self, file_path: Path) -> set[str]:
         """
         Анализ poetry.lock.
 
@@ -927,9 +921,7 @@ class DependencyAnalyzer:
         """
         deps = set()
         try:
-            async with aiofiles.open(
-                file_path, "r", encoding="utf-8", errors="ignore"
-            ) as f:
+            async with aiofiles.open(file_path, encoding="utf-8", errors="ignore") as f:
                 content = await f.read()
 
                 # Ищем все пакеты в формате [[package]]
@@ -950,7 +942,7 @@ class DependencyAnalyzer:
             logger.error(f"Ошибка при чтении {file_path}: {e}")
         return deps
 
-    def find_dependency_files(self) -> List[Tuple[Path, str]]:
+    def find_dependency_files(self) -> list[tuple[Path, str]]:
         """
         Поиск файлов с зависимостями в проекте.
 
@@ -986,7 +978,7 @@ class DependencyAnalyzer:
 
         return dependency_files
 
-    async def analyze_dependencies(self) -> Set[str]:
+    async def analyze_dependencies(self) -> set[str]:
         """
         Анализ всех зависимостей проекта.
 
@@ -1025,7 +1017,7 @@ class DependencyAnalyzer:
         logger.info(f"Найдено {len(self.dependencies)} уникальных зависимостей")
         return self.dependencies
 
-    async def find_imports_in_source(self, max_files=1000) -> Set[str]:
+    async def find_imports_in_source(self, max_files=1000) -> set[str]:
         """
         Ищет импорты в исходных файлах Python.
 
@@ -1071,7 +1063,7 @@ class DependencyAnalyzer:
         async def analyze_file(file_path):
             try:
                 async with aiofiles.open(
-                    file_path, "r", encoding="utf-8", errors="ignore"
+                    file_path, encoding="utf-8", errors="ignore"
                 ) as f:
                     content = await f.read()
 
@@ -1112,7 +1104,7 @@ class DependencyAnalyzer:
 
         return imports
 
-    def normalize_dependencies(self, dependencies: Set[str]) -> Set[str]:
+    def normalize_dependencies(self, dependencies: set[str]) -> set[str]:
         """
         Нормализует список зависимостей, преобразуя псевдонимы и подмодули в основные пакеты.
 
@@ -1134,8 +1126,8 @@ class DependencyAnalyzer:
         return normalized
 
     def find_unused_dependencies(
-        self, dependencies: Set[str], used_imports: Set[str]
-    ) -> Set[str]:
+        self, dependencies: set[str], used_imports: set[str]
+    ) -> set[str]:
         """
         Определяет неиспользуемые зависимости на основе анализа импортов.
 
@@ -1221,7 +1213,7 @@ class DependencyAnalyzer:
 
     async def analyze_project(
         self, scan_imports=False, max_files=1000
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Полный анализ проекта: зависимости и импорты.
 
@@ -1361,7 +1353,7 @@ class DocumentationCollector:
         global pypi_cache
         if os.path.exists(PYPI_CACHE_FILE):
             try:
-                with open(PYPI_CACHE_FILE, "r") as f:
+                with open(PYPI_CACHE_FILE) as f:
                     pypi_cache = json.load(f)
                 logger.info(
                     f"Загружен кеш PyPI с информацией о {len(pypi_cache)} пакетах"
@@ -1370,7 +1362,7 @@ class DocumentationCollector:
                 logger.warning(f"Не удалось загрузить кеш PyPI: {e}")
                 pypi_cache = {}
 
-    async def get_package_info(self, package: str) -> Dict[str, Any]:
+    async def get_package_info(self, package: str) -> dict[str, Any]:
         """
         Получение информации о пакете из PyPI с использованием кеша.
 
@@ -1417,7 +1409,7 @@ class DocumentationCollector:
                             f"Ошибка при получении информации о {package}: {response.status}"
                         )
                         return {}
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.error(f"Таймаут при получении информации о {package}")
             return {}
         except Exception as e:
@@ -1434,8 +1426,8 @@ class DocumentationCollector:
             logger.warning(f"Не удалось сохранить кеш PyPI: {e}")
 
     def get_github_repo(
-        self, package_info: Dict[str, Any], package_name: str
-    ) -> Optional[str]:
+        self, package_info: dict[str, Any], package_name: str
+    ) -> str | None:
         """
         Получение URL GitHub репозитория.
 
@@ -1582,9 +1574,7 @@ class DocumentationCollector:
                 return False
 
             # Проверка содержимого файла
-            async with aiofiles.open(
-                file_path, "r", encoding="utf-8", errors="ignore"
-            ) as f:
+            async with aiofiles.open(file_path, encoding="utf-8", errors="ignore") as f:
                 content = await f.read(8000)  # Читаем первые 8KB для анализа
                 content_lower = content.lower()
 
@@ -1715,7 +1705,7 @@ class DocumentationCollector:
                     )
                     return False
                 return True
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 # Убиваем процесс, если он не завершился за 540 секунд
                 process.kill()
                 logger.error(f"Таймаут при клонировании {github_url}")
@@ -1725,7 +1715,7 @@ class DocumentationCollector:
             logger.error(f"Ошибка при клонировании {github_url}: {e}")
             return False
 
-    async def process_package(self, package: str) -> Optional[Dict[str, Any]]:
+    async def process_package(self, package: str) -> dict[str, Any] | None:
         """
         Обработка одного пакета.
 
@@ -1838,7 +1828,7 @@ class DocumentationCollector:
                     try:
                         # Проверяем первые 10KB файла на наличие признаков других языков
                         async with aiofiles.open(
-                            file_path, "r", encoding="utf-8", errors="ignore"
+                            file_path, encoding="utf-8", errors="ignore"
                         ) as f:
                             content = await f.read(10000)
 
@@ -1943,8 +1933,8 @@ class DocumentationCollector:
             return None
 
     async def collect_documentation(
-        self, dependencies: Set[str]
-    ) -> Dict[str, Dict[str, Any]]:
+        self, dependencies: set[str]
+    ) -> dict[str, dict[str, Any]]:
         """
         Сбор документации для всех зависимостей.
 
@@ -1980,7 +1970,7 @@ class DocumentationCollector:
             )
 
             # Обрабатываем результаты
-            for package, result in zip(dependencies, results):
+            for package, result in zip(dependencies, results, strict=False):
                 if result:
                     docs_info[result["name"]] = result
 
@@ -2007,8 +1997,8 @@ class DocumentationCombiner:
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
     async def combine_documentation(
-        self, docs_info: Dict[str, Dict[str, Any]]
-    ) -> Dict[str, List[str]]:
+        self, docs_info: dict[str, dict[str, Any]]
+    ) -> dict[str, list[str]]:
         """
         Combines documentation for each library into unified text files.
         If documentation exceeds MAX_FILE_SIZE, it splits into multiple parts.
@@ -2038,7 +2028,7 @@ class DocumentationCombiner:
 
     async def _read_file_content(
         self, file_path: Path, package_dir: Path
-    ) -> Optional[str]:
+    ) -> str | None:
         """
         Асинхронно читает содержимое файла и проверяет язык.
 
@@ -2050,9 +2040,7 @@ class DocumentationCombiner:
             Содержимое файла с заголовком или None
         """
         try:
-            async with aiofiles.open(
-                file_path, "r", encoding="utf-8", errors="ignore"
-            ) as f:
+            async with aiofiles.open(file_path, encoding="utf-8", errors="ignore") as f:
                 content = await f.read()
 
                 # Проверка языка - пропускаем файлы не на английском/русском
@@ -2080,8 +2068,8 @@ class DocumentationCombiner:
             return None
 
     async def process_package(
-        self, package: str, info: Dict[str, Any]
-    ) -> Tuple[str, Optional[List[str]]]:
+        self, package: str, info: dict[str, Any]
+    ) -> tuple[str, list[str] | None]:
         """
         Обработка одного пакета.
 
@@ -2151,8 +2139,8 @@ class DocumentationCombiner:
         return package, combined_files
 
     async def _split_content(
-        self, package: str, output_dir: Path, content_blocks: List[str]
-    ) -> List[str]:
+        self, package: str, output_dir: Path, content_blocks: list[str]
+    ) -> list[str]:
         """
         Splits content into multiple files if total size exceeds MAX_FILE_SIZE.
 
@@ -2206,7 +2194,7 @@ class DocumentationCombiner:
                             )
                             created_files.append(file_path)
                             part_num += 1
-                    except asyncio.TimeoutError:
+                    except TimeoutError:
                         logger.error(
                             f"Timeout while splitting large block for {package}. Skipping this block."
                         )
@@ -2237,7 +2225,7 @@ class DocumentationCombiner:
 
         return created_files
 
-    def _split_large_block(self, block: str) -> List[str]:
+    def _split_large_block(self, block: str) -> list[str]:
         """
         Splits a large content block into smaller chunks that fit within MAX_FILE_SIZE.
         Оптимизированная версия для больших блоков.
@@ -2340,7 +2328,7 @@ class DocumentationCombiner:
         return result
 
     async def _save_combined_file(
-        self, package: str, output_dir: Path, content_blocks: List[str], part_num: int
+        self, package: str, output_dir: Path, content_blocks: list[str], part_num: int
     ) -> str:
         """
         Saves combined content to a file.
@@ -2388,7 +2376,7 @@ class LectureGenerator:
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
     async def generate_lecture(
-        self, combined_docs: Dict[str, List[str]], docs_info: Dict[str, Dict[str, Any]]
+        self, combined_docs: dict[str, list[str]], docs_info: dict[str, dict[str, Any]]
     ) -> None:
         """
         Создает лекцию по библиотекам Python на основе собранной документации.
@@ -2425,7 +2413,7 @@ class LectureGenerator:
 
         # Асинхронная функция для создания лекции по одной библиотеке
         async def create_package_lecture(
-            chapter_num: int, package_name: str, package_info: Dict[str, Any]
+            chapter_num: int, package_name: str, package_info: dict[str, Any]
         ) -> None:
             # Путь к файлу лекции для текущей библиотеки
             lecture_file = self.output_dir / f"{chapter_num:02d}_{package_name}.md"
@@ -2458,7 +2446,7 @@ class LectureGenerator:
                 try:
                     # Читаем файл документации
                     async with aiofiles.open(
-                        doc_file, "r", encoding="utf-8", errors="ignore"
+                        doc_file, encoding="utf-8", errors="ignore"
                     ) as f:
                         doc_content = await f.read()
 
@@ -2576,7 +2564,7 @@ class LectureGenerator:
 
         logger.info(f"Лекция по библиотекам Python создана в {self.output_dir}")
 
-    async def _create_html_index(self, docs_info: Dict[str, Dict[str, Any]]) -> None:
+    async def _create_html_index(self, docs_info: dict[str, dict[str, Any]]) -> None:
         """
         Создает HTML-индекс для удобного просмотра лекций.
 
@@ -2855,7 +2843,7 @@ async def main_async():
         report_path = output_dir / "report.json"
         if report_path.exists():
             try:
-                with open(report_path, "r") as f:
+                with open(report_path) as f:
                     report_data = json.load(f)
                     existing_packages = set(report_data.get("packages_info", {}).keys())
                     logger.info(
@@ -2887,7 +2875,7 @@ async def main_async():
         report_path = output_dir / "report.json"
         if report_path.exists():
             try:
-                with open(report_path, "r") as f:
+                with open(report_path) as f:
                     existing_report = json.load(f)
                     # Объединяем информацию о пакетах
                     existing_packages_info = existing_report.get("packages_info", {})
